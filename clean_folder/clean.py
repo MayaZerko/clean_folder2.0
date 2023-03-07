@@ -2,6 +2,7 @@ import shutil
 import sys
 from pathlib import Path
 import time
+from threading import Thread
 
 # Словник з розширеннями для сортування
 EXTENSIONS_DICT = {
@@ -19,6 +20,8 @@ CYRILLIC_SYMBOLS = "абвгдеёжзийклмнопрстуфхцчшщъыь
 TRANSLATION = ("a", "b", "v", "g", "d", "e", "e", "j", "z", "i", "j", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u",
                "f", "h", "ts", "ch", "sh", "sch", "", "y", "", "e", "yu", "ya", "je", "i", "ji", "g")
 trans = {}
+
+threads: list[Thread] = []
 
 # За замовчуванням - None. Потім приймає шлях
 main_folder: Path | None = None
@@ -58,15 +61,16 @@ def cleaner(folder: Path):
             # Будемо передавати цей файл далі на сортування і переміщення до нової папки.
             sort_file(file)
 
+            # Видаляємо директорію, якщо вона порожня
+            if not any(file.parent.iterdir()):
+                file.parent.rmdir()
+
         if file.is_dir():
             # Будемо заходити всередину папки та повертати її вміст знову в середину цієї ж функції.
             # Надалі видаляти пусту папку.
-
-            cleaner(file)
-
-            # Видаляємо директорію, якщо вона порожня
-            if not any(file.iterdir()):
-                file.rmdir()
+            folder_thread = Thread(target= cleaner, args= (file, ), name= str(file))
+            folder_thread.start()
+            threads.append(folder_thread)
 
 
 def sort_file(file: Path):
@@ -136,5 +140,8 @@ def normalize(file_name: str) -> str:
 
 if __name__ == '__main__':
     main()
+    for thread in threads:
+        print(thread.name)
+        thread.join()
     print("Finished!!!")
     exit()
